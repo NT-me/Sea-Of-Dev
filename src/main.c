@@ -19,6 +19,14 @@ typedef struct{
   int KerMax; //Kerosen maximum
 } fichier;
 
+// Type Ship
+typedef struct {
+	entityid_t ShipID;  // Contient le type de l'entité ENT_SHIP et son Identifiant
+	coord_t pos; // position du ship
+	int KER; // Var contenant le niveaux de kérosene du ship
+	int COQ; // Var contenant le niveaux de coque (vie) du ship
+} SHIP;
+
 void pauseStop()
 {
     int continuer = 1;
@@ -108,7 +116,6 @@ char* ChToCh(char* fic, int PosChDeb, int PosChFin){
 //2  ;  1  0  0  ;  1  0  0  ;  2  0  EOF
 //17 18 19 20 21 22 23 24 25 26 27 28 29
 
-
 fichier read_file(char* nomF){
   fichier res;
   char buf1, *point=NULL;
@@ -178,12 +185,31 @@ coord_t repere_cadrillage(int coinX, int coinY,int tailleC, int PosX, int PosY){
   return res;
 }
 
+SHIP* init_SHIP (int nbS, int km, int cm){
+    SHIP *tab;
+    tab = malloc(sizeof(SHIP)*nbS);
+    tab[nbS];
+    int i;
+    for(i=0;i<nbS;i++){
+        tab[i].KER = km;
+        tab[i].COQ = cm;
+        tab[i].ShipID.type = ENT_SHIP;
+        tab[i].ShipID.id = i;
+        }
+    return tab;
+}
+
+void free_SHIP (SHIP* tab) {
+    int i;
+    free(tab);
+}
 
 int main(int argc, char *argv[])
 {
 // Variables du main
     SDL_Surface *ecran = NULL;
     navalmap_t *carte;
+    SHIP *armada;
     fichier temp;
 //------------------------
 //Test ligne de commande
@@ -203,6 +229,7 @@ if (argc<1){
     ecran = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE);
     temp = read_file(argv[1]);
 
+    armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
     carte=init_navalmap(temp.type, temp.size, temp.nbShips);
 
 		// PositionX, PostionY, nbre de case de côté, nbre de case de haut, taille des cases de px, taille bordure en px, ecran
@@ -217,6 +244,8 @@ if (argc<1){
 //------------------------
 //Free de tout
     SDL_Quit();
+    free_SHIP(armada);
     free_navalmap(carte);
+
     return EXIT_SUCCESS;
 }
