@@ -11,21 +11,28 @@
 #include "../include/navalmap/navalmap.c"
 #include "../include/navalmap/nm_rect.c"
 
+
+//------Struct----
+
+//Type fichier
 typedef struct{
   map_t type; //Type de la map_t
   coord_t size; //Taille de la map
   int nbShips; //Nom de navire
   int CoqMax; //Coque maximum
   int KerMax; //Kerosen maximum
+  int NbTours; //Nombre de tours
 } fichier;
 
 // Type Ship
 typedef struct {
 	entityid_t ShipID;  // Contient le type de l'entité ENT_SHIP et son Identifiant
-	coord_t pos; // position du ship
+	//coord_t pos; // position du ship
 	int KER; // Var contenant le niveaux de kérosene du ship
 	int COQ; // Var contenant le niveaux de coque (vie) du ship
 } SHIP;
+
+//-----------------
 
 void pauseStop()
 {
@@ -69,6 +76,8 @@ int draw_Case(int posX, int posY, int taille, int bordure, SDL_Surface *ecran){
 	 SDL_FreeSurface(c);
 	 SDL_FreeSurface(c2);
 
+   return EXIT_SUCCESS;
+
 }
 
 void draw_cadrillage(int posX, int posY, int largeur, int hauteur, int tailleC, int bordureC, SDL_Surface *ecran){
@@ -81,6 +90,31 @@ void draw_cadrillage(int posX, int posY, int largeur, int hauteur, int tailleC, 
 		}
 	}
 }
+
+void draw_ship(navalmap_t *nm, SDL_Surface *ecran, int Noir, int IDnavire){
+  SDL_Surface *c = NULL;
+  SDL_Rect position;
+  c = SDL_CreateRGBSurface(SDL_HWSURFACE, 5, 7, 32, 0, 0, 0, 0);
+
+  if(Noir==0){
+    SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 0, 0, 255));
+  }
+  else{
+    SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 0, 0, 0));
+  }
+
+  position.x = nm->shipPosition[IDnavire].x;
+  position.y = nm->shipPosition[IDnavire].y;
+  SDL_BlitSurface(c, NULL, ecran, &position); // Collage de la surface sur l'écran
+
+}
+
+/*void draw_flotte(fichier fic,SHIP* flotte, SDL_Surface *ecran, int Noir){
+  int i;
+  for(i=0;i<fic.nbShips;++i){
+    draw_ship(flotte->)
+  }
+}*/
 
 long weight_file(char *nomF){
   long taille;
@@ -119,7 +153,7 @@ char* ChToCh(char* fic, int PosChDeb, int PosChFin){
 fichier read_file(char* nomF){
   fichier res;
   char buf1, *point=NULL;
-  int fd, count=0, dpa=0, dpb=0, dpc=0, dpd=0, dpe=0, dpf=0, posT=0;
+  int fd, count=0, dpa=0, dpb=0, dpc=0, dpd=0, dpe=0, dpf=0;
   fd=open(nomF, O_RDONLY);
 
   for(int l=0;l<weight_file(nomF);++l){
@@ -149,6 +183,7 @@ fichier read_file(char* nomF){
     }
   close(fd);
 
+  // On récupère le type de la map
   point = ChToCh(nomF, 0,dpa-1);
   if (strcmp(point, "rectangle")==0){
     res.type=MAP_RECT;
@@ -158,20 +193,34 @@ fichier read_file(char* nomF){
   }
   free(point);
 
+  //On récupère la taille x de la carte
   point= ChToCh(nomF, dpa, dpb-1);
   res.size.x = atoi(point);
   free(point);
+
+  //On récupère la taille y de la carte
   point= ChToCh(nomF, dpb, dpc-1);
   res.size.y = atoi(point);
   free(point);
+
+  //On récupère le nombre de navire
   point= ChToCh(nomF, dpc, dpd-1);
   res.nbShips = atoi(point);
   free(point);
+
+  //On récupère la coque max
   point=ChToCh(nomF, dpd, dpe-1);
   res.CoqMax = atoi(point);
   free(point);
+
+  //On récupère ke Kerosen max
   point=ChToCh(nomF, dpe, dpf-1);
   res.KerMax = atoi(point);
+  free(point);
+
+  //On récupère le nombre de tours
+  point=ChToCh(nomF, dpf, weight_file(nomF));
+  res.NbTours = atoi(point);
   free(point);
 
   return res;
@@ -200,8 +249,50 @@ SHIP* init_SHIP (int nbS, int km, int cm){
 }
 
 void free_SHIP (SHIP* tab) {
-    int i;
     free(tab);
+}
+
+SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
+    coord_t posAtk = nm->shipPosition[IDatk];
+    int * nbShips;
+    int * list;
+    nm->getTargets(nm,posAtk,4,nbShips);
+
+    /*tab[IDatk].KER = tab[IDatk].KER - 5;
+
+    if ((Impact.x - posAtk.x <2) && (Impact.y - posAtk.y <2)){
+      printf("A pas touché 1\n");
+      return tab; // si impact trop proche on quitte
+    }
+
+    if ((Impact.x - posAtk.x >4) && (Impact.y - posAtk.y >4)) {
+      printf("A pas touché 2\n");
+      return tab;
+    } // si impact trop loin on quitte
+
+    if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP) {
+        int i = 0;
+        for (i=0;i<nm->nbShips;++i) {
+            if ((nm->shipPosition[list[i]].x == Impact.x) && (nm->shipPosition[list[i]].y == Impact.y)) {
+                tab[list[i]].COQ = tab[list[i]].COQ - 40;
+            }
+            if (nm->shipPosition[list[i]].x == Impact.x + 1) {
+                tab[list[i]].COQ = tab[list[i]].COQ - 20;
+            }
+            if (nm->shipPosition[list[i]].y == Impact.y + 1) {
+                tab[list[i]].COQ = tab[list[i]].COQ - 20;
+            }
+            if (nm->shipPosition[list[i]].x == Impact.x - 1) {
+                tab[list[i]].COQ = tab[list[i]].COQ - 20;
+            }
+            if (nm->shipPosition[list[i]].y == Impact.y - 1) {
+                tab[list[i]].COQ = tab[list[i]].COQ - 20;
+            }
+            ++i;
+        }
+    }*/
+printf("Coucou\n");
+return tab;
 }
 
 int main(int argc, char *argv[])
@@ -213,13 +304,13 @@ int main(int argc, char *argv[])
     fichier temp;
 //------------------------
 //Test ligne de commande
-if (argc==0){
+/*if (argc==0){
   printf("Pas d'argument, merci d'en mettre un.\n");
   return EXIT_SUCCESS;
 }
 if (argc<1){
   printf("Trop d'argument.\n");
-}
+}*/
 //------------------------
 //Initialisation des bibliothèques
     SDL_Init(SDL_INIT_VIDEO);
@@ -227,20 +318,34 @@ if (argc<1){
 //------------------------
 //Corps du main
     ecran = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE);
-    temp = read_file(argv[1]);
 
-    armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
+    temp = read_file(argv[1]); //Lecture du fichier
     carte=init_navalmap(temp.type, temp.size, temp.nbShips);
+    carte->initEntityMap(carte);
+    armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
+
+    coord_t Impact, atk;
+    atk.x=5;
+    atk.y=3;
+    Impact.x=5;
+    Impact.y=5;
+
+    placeShip(carte, 0, atk);
+    placeShip(carte, 1, Impact);
 
 		// PositionX, PostionY, nbre de case de côté, nbre de case de haut, taille des cases de px, taille bordure en px, ecran
     if(carte->type==MAP_RECT){
       draw_cadrillage(20, 20, carte->size.x ,carte->size.y , 44, 2, ecran);
     }
+    //draw_ship(ecran);
+
+    //Place les navires
+    armada=ATK(carte, armada, 0, Impact);
 
     SDL_WM_SetCaption("Sea of dev - Théo Nardin, Emile Dadou", NULL);
 		SDL_Flip(ecran); // Mise à jour de l'écran
     weight_file(argv[1]);
-    pauseStop();
+    //pauseStop();
 //------------------------
 //Free de tout
     SDL_Quit();
