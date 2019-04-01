@@ -254,25 +254,27 @@ void free_SHIP (SHIP* tab) {
 
 SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
     coord_t posAtk = nm->shipPosition[IDatk];
-    int * nbShips;
-    int * list;
-    nm->getTargets(nm,posAtk,4,nbShips);
+    int nb;
+    int * list=NULL;
+    list = nm->getTargets(nm,posAtk,4,&nb);
+    tab[IDatk].KER = tab[IDatk].KER - 5;
 
-    /*tab[IDatk].KER = tab[IDatk].KER - 5;
+printf("Nombre de bateaux dans la liste %d \n", nb);
 
     if ((Impact.x - posAtk.x <2) && (Impact.y - posAtk.y <2)){
-      printf("A pas touché 1\n");
+      printf("A pas touché - trop proche\n");
       return tab; // si impact trop proche on quitte
     }
 
-    if ((Impact.x - posAtk.x >4) && (Impact.y - posAtk.y >4)) {
-      printf("A pas touché 2\n");
+    if (list==NULL){
+      printf("A pas touché - Liste nulle\n");
       return tab;
-    } // si impact trop loin on quitte
+    }
 
     if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP) {
         int i = 0;
-        for (i=0;i<nm->nbShips;++i) {
+        for (i=0;i<nb;++i) {
+        //Si il touche
             if ((nm->shipPosition[list[i]].x == Impact.x) && (nm->shipPosition[list[i]].y == Impact.y)) {
                 tab[list[i]].COQ = tab[list[i]].COQ - 40;
             }
@@ -290,7 +292,7 @@ SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
             }
             ++i;
         }
-    }*/
+    }
 printf("Coucou\n");
 return tab;
 }
@@ -324,14 +326,25 @@ if (argc<1){
     carte->initEntityMap(carte);
     armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
 
-    coord_t Impact, atk;
-    atk.x=5;
-    atk.y=3;
-    Impact.x=5;
-    Impact.y=5;
+// Test ---------------------------------------------------------
+    coord_t bat1, bat2;
+    bat1.x=2;
+    bat1.y=1;
 
-    placeShip(carte, 0, atk);
-    placeShip(carte, 1, Impact);
+    bat2.x=1;
+    bat2.y=0;
+
+    placeShip(carte, 1, bat1);
+    placeShip(carte, 0, bat2);
+
+
+    printf("ID bat1 %d\n", carte->map[bat1.y][bat1.x].id);
+    printf("ID bat2 %d\n", carte->map[bat2.y][bat2.x].id);
+
+    printf("Type case %d\n", carte->map [bat1.y][bat1.x] .type);
+    printf("Type case %d\n", carte->map [bat2.y][bat2.x] .type);
+
+//--------------------------------------------------------------
 
 		// PositionX, PostionY, nbre de case de côté, nbre de case de haut, taille des cases de px, taille bordure en px, ecran
     if(carte->type==MAP_RECT){
@@ -339,12 +352,16 @@ if (argc<1){
     }
     //draw_ship(ecran);
 
-    //Place les navires
-    armada=ATK(carte, armada, 0, Impact);
+    armada=ATK(carte, armada, carte->map[bat1.x][bat1.y].id, bat2);
+
+    printf("Ker ID 0 %d\n", armada[0].KER);
+    printf("COQ ID 0 %d\n", armada[0].COQ);
+    printf("Ker ID 1 %d\n", armada[1].KER);
+    printf("COQ ID 1 %d\n", armada[1].COQ);
+
 
     SDL_WM_SetCaption("Sea of dev - Théo Nardin, Emile Dadou", NULL);
 		SDL_Flip(ecran); // Mise à jour de l'écran
-    weight_file(argv[1]);
     //pauseStop();
 //------------------------
 //Free de tout
