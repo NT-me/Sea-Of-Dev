@@ -237,7 +237,6 @@ coord_t repere_cadrillage(int coinX, int coinY,int tailleC, int PosX, int PosY){
 SHIP* init_SHIP (int nbS, int km, int cm){
     SHIP *tab;
     tab = malloc(sizeof(SHIP)*nbS);
-    tab[nbS];
     int i;
     for(i=0;i<nbS;i++){
         tab[i].KER = km;
@@ -256,63 +255,61 @@ SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
     coord_t posAtk = nm->shipPosition[IDatk];
     int nb;
     int * list=NULL;
-    list = nm->getTargets(nm,posAtk,4,&nb);
     tab[IDatk].KER = tab[IDatk].KER - 5;
+    for (int dragibus=1;dragibus<=4;++dragibus){
+      list = nm->getTargets(nm,posAtk,dragibus,&nb);
+      if ((Impact.x - posAtk.x <2) && (Impact.y - posAtk.y <2)){
+        printf("A pas touché - trop proche\n");
+        return tab; // si impact trop proche on quitte
+      }
 
-printf("Nombre de bateaux dans la liste %d \n", nb);
-
-    if ((Impact.x - posAtk.x <2) && (Impact.y - posAtk.y <2)){
-      printf("A pas touché - trop proche\n");
-      return tab; // si impact trop proche on quitte
+      if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP) {
+          int i = 0;
+          for (i=0;i<nb;++i) {
+          //Si il touche
+              if ((nm->shipPosition[list[i]].x == Impact.x) && (nm->shipPosition[list[i]].y == Impact.y)) {
+                  tab[list[i]].COQ = tab[list[i]].COQ - 40;
+              }
+              if (nm->shipPosition[list[i]].x == Impact.x + 1) {
+                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
+              }
+              if (nm->shipPosition[list[i]].y == Impact.y + 1) {
+                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
+              }
+              if (nm->shipPosition[list[i]].x == Impact.x - 1) {
+                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
+              }
+              if (nm->shipPosition[list[i]].y == Impact.y - 1) {
+                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
+              }
+              ++i;
+          }
+      }
+      /*
+      if (list==NULL){
+        printf("A pas touché - Liste nulle\n");
+        return tab;
+      }*/
     }
-
-    if (list==NULL){
-      printf("A pas touché - Liste nulle\n");
-      return tab;
-    }
-
-    if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP) {
-        int i = 0;
-        for (i=0;i<nb;++i) {
-        //Si il touche
-            if ((nm->shipPosition[list[i]].x == Impact.x) && (nm->shipPosition[list[i]].y == Impact.y)) {
-                tab[list[i]].COQ = tab[list[i]].COQ - 40;
-            }
-            if (nm->shipPosition[list[i]].x == Impact.x + 1) {
-                tab[list[i]].COQ = tab[list[i]].COQ - 20;
-            }
-            if (nm->shipPosition[list[i]].y == Impact.y + 1) {
-                tab[list[i]].COQ = tab[list[i]].COQ - 20;
-            }
-            if (nm->shipPosition[list[i]].x == Impact.x - 1) {
-                tab[list[i]].COQ = tab[list[i]].COQ - 20;
-            }
-            if (nm->shipPosition[list[i]].y == Impact.y - 1) {
-                tab[list[i]].COQ = tab[list[i]].COQ - 20;
-            }
-            ++i;
-        }
-    }
-printf("Coucou\n");
 return tab;
 }
 
 int main(int argc, char *argv[])
 {
+//Test ligne de commande
+  if (argc<2){
+    printf("Pas d'argument, merci d'en mettre un.\n");
+    return EXIT_SUCCESS;
+  }
+  if (argc>2){
+    printf("Trop d'argument.\n");
+  }
+//------------------------
 // Variables du main
     SDL_Surface *ecran = NULL;
     navalmap_t *carte;
     SHIP *armada;
     fichier temp;
-//------------------------
-//Test ligne de commande
-/*if (argc==0){
-  printf("Pas d'argument, merci d'en mettre un.\n");
-  return EXIT_SUCCESS;
-}
-if (argc<1){
-  printf("Trop d'argument.\n");
-}*/
 //------------------------
 //Initialisation des bibliothèques
     SDL_Init(SDL_INIT_VIDEO);
@@ -326,34 +323,14 @@ if (argc<1){
     carte->initEntityMap(carte);
     armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
 
-// Test ---------------------------------------------------------
-    coord_t bat1, bat2;
-    bat1.x=2;
-    bat1.y=1;
-
-    bat2.x=1;
-    bat2.y=0;
-
-    placeShip(carte, 1, bat1);
-    placeShip(carte, 0, bat2);
-
-
-    printf("ID bat1 %d\n", carte->map[bat1.y][bat1.x].id);
-    printf("ID bat2 %d\n", carte->map[bat2.y][bat2.x].id);
-
-    printf("Type case %d\n", carte->map [bat1.y][bat1.x] .type);
-    printf("Type case %d\n", carte->map [bat2.y][bat2.x] .type);
-
-//--------------------------------------------------------------
-
 		// PositionX, PostionY, nbre de case de côté, nbre de case de haut, taille des cases de px, taille bordure en px, ecran
     if(carte->type==MAP_RECT){
       draw_cadrillage(20, 20, carte->size.x ,carte->size.y , 44, 2, ecran);
     }
     //draw_ship(ecran);
 
-    armada=ATK(carte, armada, carte->map[bat1.x][bat1.y].id, bat2);
 
+    // Test ---------------------------------------------------------
     printf("Ker ID 0 %d\n", armada[0].KER);
     printf("COQ ID 0 %d\n", armada[0].COQ);
     printf("Ker ID 1 %d\n", armada[1].KER);
