@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include "../include/navalmap/navalmap.h"
 #include "../include/navalmap/nm_rect.h"
 #include "../include/navalmap/navalmap.c"
@@ -91,9 +92,17 @@ void draw_cadrillage(int posX, int posY, int largeur, int hauteur, int tailleC, 
 	}
 }
 
+coord_t repere_cadrillage(int coinX, int coinY,int tailleC, int PosX, int PosY){
+  coord_t res;
+  res.x=coinX+(tailleC/2)+(tailleC*PosX);
+  res.y=coinY+(tailleC/2)+(tailleC*PosY);
+  return res;
+}
+
 void draw_ship(navalmap_t *nm, SDL_Surface *ecran, int Noir, int IDnavire){
   SDL_Surface *c = NULL;
-  SDL_Rect position;
+  coord_t pos;
+  SDL_Rect positionR;
   c = SDL_CreateRGBSurface(SDL_HWSURFACE, 5, 7, 32, 0, 0, 0, 0);
 
   if(Noir==0){
@@ -102,19 +111,22 @@ void draw_ship(navalmap_t *nm, SDL_Surface *ecran, int Noir, int IDnavire){
   else{
     SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 0, 0, 0));
   }
+  pos=repere_cadrillage(20, 20, 44, nm->shipPosition[IDnavire].x, nm->shipPosition[IDnavire].y);
+  /*position.x = nm->shipPosition[IDnavire].x;
+  position.y = nm->shipPosition[IDnavire].y;*/
 
-  position.x = nm->shipPosition[IDnavire].x;
-  position.y = nm->shipPosition[IDnavire].y;
-  SDL_BlitSurface(c, NULL, ecran, &position); // Collage de la surface sur l'écran
+  positionR.x=pos.x; positionR.y=pos.y;
+
+  SDL_BlitSurface(c, NULL, ecran, &positionR); // Collage de la surface sur l'écran
 
 }
 
-/*void draw_flotte(fichier fic,SHIP* flotte, SDL_Surface *ecran, int Noir){
+void draw_flotte(navalmap_t *nm, SDL_Surface *ecran, int Noir){
   int i;
-  for(i=0;i<fic.nbShips;++i){
-    draw_ship(flotte->)
+  for(i=0;i<nm->nbShips;++i){
+    draw_ship(nm, ecran, 0, i);
   }
-}*/
+}
 
 long weight_file(char *nomF){
   long taille;
@@ -213,7 +225,7 @@ fichier read_file(char* nomF){
   res.CoqMax = atoi(point);
   free(point);
 
-  //On récupère ke Kerosen max
+  //On récupère le Kerosen max
   point=ChToCh(nomF, dpe, dpf-1);
   res.KerMax = atoi(point);
   free(point);
@@ -225,13 +237,6 @@ fichier read_file(char* nomF){
 
   return res;
 
-}
-
-coord_t repere_cadrillage(int coinX, int coinY,int tailleC, int PosX, int PosY){
-  coord_t res;
-  res.x=coinX+(tailleC/2)+(tailleC*PosX);
-  res.y=coinY+(tailleC/2)+(tailleC*PosY);
-  return res;
 }
 
 SHIP* init_SHIP (int nbS, int km, int cm){
@@ -294,6 +299,30 @@ SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
 return tab;
 }
 
+int jouer (int nbTour){
+  char choix[3];
+
+  printf("Saisissez les trois premières lettres de l'action à accomplir.\n En majuscule\n");
+  scanf("%s\n", choix);
+  if (strcmp(choix, "NON")==0){
+    return 100;
+  }
+
+  if (strcmp(choix, "ATK")==0){
+    return 101;
+  }
+
+  if (strcmp(choix, "MOV")==0){
+    return 102;
+  }
+  else{
+    printf("Vous ne pouvez pas ne pas jouer !\n");
+    scanf("%s\n", choix);
+  }
+
+  return -1;
+}
+
 int main(int argc, char *argv[])
 {
 //Test ligne de commande
@@ -310,6 +339,7 @@ int main(int argc, char *argv[])
     navalmap_t *carte;
     SHIP *armada;
     fichier temp;
+    int me;
 //------------------------
 //Initialisation des bibliothèques
     SDL_Init(SDL_INIT_VIDEO);
@@ -318,29 +348,61 @@ int main(int argc, char *argv[])
 //Corps du main
     ecran = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE);
 
+
+//Lecture
     temp = read_file(argv[1]); //Lecture du fichier
     carte=init_navalmap(temp.type, temp.size, temp.nbShips);
     carte->initEntityMap(carte);
     armada=init_SHIP(temp.nbShips, temp.KerMax, temp.CoqMax);
+//------------------------
 
+placeRemainingShipsAtRandom(carte);
+
+//Dessin du cadrillage
 		// PositionX, PostionY, nbre de case de côté, nbre de case de haut, taille des cases de px, taille bordure en px, ecran
     if(carte->type==MAP_RECT){
       draw_cadrillage(20, 20, carte->size.x ,carte->size.y , 44, 2, ecran);
     }
-    //draw_ship(ecran);
 
-
-    // Test ---------------------------------------------------------
-    printf("Ker ID 0 %d\n", armada[0].KER);
-    printf("COQ ID 0 %d\n", armada[0].COQ);
-    printf("Ker ID 1 %d\n", armada[1].KER);
-    printf("COQ ID 1 %d\n", armada[1].COQ);
+    draw_flotte(carte, ecran, 0);
 
 
     SDL_WM_SetCaption("Sea of dev - Théo Nardin, Emile Dadou", NULL);
-		SDL_Flip(ecran); // Mise à jour de l'écran
-    //pauseStop();
+    SDL_Flip(ecran); // Mise à jour de l'écran
+
+//-----------------------
+
+//Processus de jeu
+    for(int zimbabwe = 0; zimbabwe<carte->nbShips; ++zimbabwe){
+        pid_t a=fork();
+        pid_t b;
+        if (a!=0){
+          //Processus père
+          b=wait(NULL);
+        }
+        else{
+          // Processus fils
+          int action=0;
+          me = getpid();
+          printf("%d\n", me);
+          action = jouer(temp.NbTours);
+          exit(0);
+        }
+
+      }
 //------------------------
+
+//------------------------
+
+// Test
+printf("Ker ID 0 %d\n", armada[0].KER);
+printf("COQ ID 0 %d\n\n", armada[0].COQ);
+printf("Ker ID 1 %d\n", armada[1].KER);
+printf("COQ ID 1 %d\n", armada[1].COQ);
+//------------------------
+
+pauseStop();
+
 //Free de tout
     SDL_Quit();
     free_SHIP(armada);
