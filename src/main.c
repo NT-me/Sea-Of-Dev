@@ -1,17 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <SDL.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include "../include/navalmap/navalmap.h"
-#include "../include/navalmap/nm_rect.h"
-#include "../include/navalmap/navalmap.c"
-#include "../include/navalmap/nm_rect.c"
-
+#include "../include/dependance.h"
 
 //------Struct----
 
@@ -299,28 +286,72 @@ SHIP* ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
 return tab;
 }
 
-int jouer (int nbTour){
-  char choix[3];
+void MOV(navalmap_t * nmap, int IDship, coord_t deplacement, SDL_Surface *ecran){
+  draw_flotte(nmap, ecran, 1);
+  moveShip(nmap, IDship, deplacement);
+  draw_flotte(nmap, ecran, 0);
+  SDL_Flip(ecran); // Mise à jour de l'écran
+}
 
+int SCN(navalmap_t *m, int shipID, SHIP * s){
+  int *Liste;
+  coord_t pos_s;
+  pos_s = m->shipPosition[shipID];
+  int nb_ship=0, IDNav_Det = -1;
+  for(int i = 1; i<m->size.x; i++){
+    Liste = m->getTargets(m,pos_s,i,&nb_ship);
+    if(nb_ship>0){
+      IDNav_Det = Liste[0];
+      i=m->size.x+1;
+    }
+  }
+  s[shipID].KER = s[shipID].KER-3;
+
+  return IDNav_Det;
+
+}
+int jouer (int nbTour, char choix[3]){
+  int flag = 1, res=0;
+while (flag){
   printf("Saisissez les trois premières lettres de l'action à accomplir.\n En majuscule\n");
-  scanf("%s\n", choix);
   if (strcmp(choix, "NON")==0){
-    return 100;
+    flag=0;
+    res = 100;
   }
 
   if (strcmp(choix, "ATK")==0){
-    return 101;
+    flag=0;
+    res =  101;
   }
 
   if (strcmp(choix, "MOV")==0){
-    return 102;
+    flag=0;
+    res =  102;
   }
   else{
-    printf("Vous ne pouvez pas ne pas jouer !\n");
-    scanf("%s\n", choix);
+    if (flag== 1){
+    printf("Cette commande n'est pas reconnue, merci de se référer au glossaire !\n");
+    }
   }
+}
+  return res;
+}
 
-  return -1;
+int decision(int nbTour, navalmap_t *m, int shipID, SHIP * s, int lastSCN){
+  coord_t pos_ennemie; // Variable stockant la position d'un navire
+  pos_ennemie.x = -1;
+  pos_ennemie.y = -1;
+  coord_t pos_self = m->shipPosition[shipID];
+
+  if((pos_ennemie.x == -1  && pos_ennemie.y == -1) || lastSCN < 3){
+     return jouer(nbTour, "SCN");
+  }
+  else if (pos_ennemie.x - pos_self.x <4 && pos_ennemie.y - pos_self.y <4){
+    return jouer(nbTour, "ATK");
+  }
+  else{
+    return jouer(nbTour, "MOV");
+  }
 }
 
 int main(int argc, char *argv[])
@@ -340,6 +371,7 @@ int main(int argc, char *argv[])
     SHIP *armada;
     fichier temp;
     int me;
+    int action=0, nbTour=0;
 //------------------------
 //Initialisation des bibliothèques
     SDL_Init(SDL_INIT_VIDEO);
@@ -364,41 +396,70 @@ placeRemainingShipsAtRandom(carte);
       draw_cadrillage(20, 20, carte->size.x ,carte->size.y , 44, 2, ecran);
     }
 
-    draw_flotte(carte, ecran, 0);
-
 
     SDL_WM_SetCaption("Sea of dev - Théo Nardin, Emile Dadou", NULL);
-    SDL_Flip(ecran); // Mise à jour de l'écran
-
 //-----------------------
 
 //Processus de jeu
-    for(int zimbabwe = 0; zimbabwe<carte->nbShips; ++zimbabwe){
-        pid_t a=fork();
-        pid_t b;
-        if (a!=0){
-          //Processus père
-          b=wait(NULL);
-        }
-        else{
-          // Processus fils
-          int action=0;
-          me = getpid();
-          printf("%d\n", me);
-          action = jouer(temp.NbTours);
-          exit(0);
+
+for(nbTour=0;nbTour<temp.NbTours;++nbTour){
+  draw_flotte(carte, ecran, 0);
+  SDL_Flip(ecran);
+  for(int zimbabwe = 0; zimbabwe<carte->nbShips; ++zimbabwe){
+// Initialisation des tubes
+      int pipefd[2];  // fd du tube qui renvoie l'action dans le père
+      int retour[1]; // tab de 3 int qui contient le code action, et ses coordonnées
+      if (pipe(pipefd)==-1){
+        printf("pipe failed\n");
+        return -1;
+      }
+//-----------------------
+      pid_t a;
+
+      if ((a=fork()) < 0)
+        {
+          printf("fork failed\n");
+          return -1;
         }
 
+
+      // caster en void les variables pour l'etat
+      // et les stocker dans etat
+
+      if (a!=0){
+        //Processus père
+        close(pipefd[1]); // on ferme le canal d'ecriture de pipefd
+        read(pipefd[0],retour,sizeof(int) * 3); // on lit le tab retour envoyer a partir du proc fils
+        printf("Valeur de retour %d\n", retour[0]);
+        wait(NULL);
       }
+      else{
+        // Processus fils
+        close(pipefd[0]);
+        me = getpid();
+        printf("\n%d\n", me);
+        action = decision(nbTour, carte, 0, armada, 0);
+
+        retour[0] = action; // on met dans la 1re case de retour le code action
+        printf("Donnez coord x de l'action: ");
+        printf("\nDonnez coord y de l'action: ");
+        write(pipefd[1], retour, sizeof(int) * 3); // on ecrit dans le pipe le tab retour pour l'envoyer dans le Processus père (serveur)
+        exit(-1);
+      }
+
+    }
+    draw_flotte(carte, ecran, 1);
+}
+
 //------------------------
 
 //------------------------
 
 // Test
-printf("Ker ID 0 %d\n", armada[0].KER);
+/*printf("Ker ID 0 %d\n", armada[0].KER);
 printf("COQ ID 0 %d\n\n", armada[0].COQ);
 printf("Ker ID 1 %d\n", armada[1].KER);
-printf("COQ ID 1 %d\n", armada[1].COQ);
+printf("COQ ID 1 %d\n", armada[1].COQ);*/
 //------------------------
 
 pauseStop();
