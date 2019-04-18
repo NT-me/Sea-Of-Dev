@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     navalmap_t *carte;
     SHIP *armada;
     fichier temp;
-    int me, idB=0;
+    int idB=0;
     int nbTour=0;
     VAR_JEU PartieCourante;
     int ** nb_scan = NULL;
@@ -70,6 +70,7 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
   SDL_Flip(ecran);
   for(int zimbabwe = 0; zimbabwe<carte->nbShips; ++zimbabwe){
     idB=zimbabwe;
+    samu(carte, armada, idB);
 // Initialisation des tubes
       int pipefd[2];  // fd du tube qui renvoie l'action dans le père
       if (pipe(pipefd)==-1){
@@ -92,22 +93,18 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
         //Processus père
         close(pipefd[1]); // on ferme le canal d'ecriture de pipefd
         read(pipefd[0],retour,sizeof(int) * 3); // on lit le tab retour envoyer a partir du proc fils
-        //printf("ID dans le père %d\n", idB);
-        PartieCourante = make_action(carte, armada, idB, retour[0], PartieCourante.ID_Det, ecran);
+        PartieCourante = make_action(carte, armada, idB, retour[0], nb_scan[idB][1], ecran);
         nb_scan = verif_scanner(idB,carte,PartieCourante.code_retour,PartieCourante.ID_Det, nb_scan);
 
-        //printf("Valeur de retour %d\n", retour[0]);
         close(pipefd[0]);
         wait(NULL);
       }
       else{
         // Processus fils
         close(pipefd[0]);
-        me = getpid();
 
         retour[0] = decision(nbTour, carte, idB, armada, nb_scan[idB][0], nb_scan[idB][1]); // on met dans la 1re case de retour le code action
 
-        // Test
         printf("Ker %d\n", armada[idB].KER);
         printf("COQ %d\n\n", armada[idB].COQ);
         //------------------------
@@ -115,7 +112,7 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
         close(pipefd[1]);
         exit(-1);
       }
-      pauseStop();
+      sleep(2);
     }
     draw_flotte(carte, ecran, 1);
 }
