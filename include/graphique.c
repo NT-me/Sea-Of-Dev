@@ -24,9 +24,7 @@ int draw_Case(int posX, int posY, int taille, int bordure, SDL_Surface *ecran){
 	c = SDL_CreateRGBSurface(SDL_HWSURFACE, taille, taille, 32, 0, 0, 0, 0);
 	c2 = SDL_CreateRGBSurface(SDL_HWSURFACE, taille-bordure, taille-bordure, 32, 0, 0, 0, 0);
 
-
-	// Remplissage de la surface avec du blanc
-	SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 255, 255, 255));
+	SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 255, rand()%200, rand()%200));
 	SDL_FillRect(c2, NULL, SDL_MapRGB(c->format, 0, 0, 0));
 
 	position.x = posX;
@@ -69,7 +67,7 @@ void draw_ship(navalmap_t *nm, SDL_Surface *ecran, int Noir, int IDnavire){
   c = SDL_CreateRGBSurface(SDL_HWSURFACE, 5, 7, 32, 0, 0, 0, 0);
 
   if(Noir==0){
-    SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 0, 0, 255));
+    SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 50*IDnavire-1, 50*IDnavire, 255-((IDnavire+50)*4)));
   }
   else{
     SDL_FillRect(c, NULL, SDL_MapRGB(c->format, 0, 0, 0));

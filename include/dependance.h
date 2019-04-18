@@ -11,6 +11,7 @@
 #include "./navalmap/nm_rect.h"
 #include "./navalmap/navalmap.c"
 #include "./navalmap/nm_rect.c"
+#include <tgmath.h>
 
 //------Struct----
 

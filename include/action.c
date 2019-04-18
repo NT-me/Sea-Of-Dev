@@ -7,50 +7,37 @@ void ATK (navalmap_t * nm, SHIP* tab, int IDatk,coord_t Impact){
       lui faire les dégats associés
   Sinon
       voir s'il n'est pas dans la cas au dessus/dessous/gauche/droite
-
       */
+    printf("CAPITAINE nous tirons en %d x %d y\n", Impact.y, Impact.x);
     coord_t posAtk = nm->shipPosition[IDatk];
-    int nb;
-    int * list=NULL;
-
     tab[IDatk].KER = tab[IDatk].KER - 5;
-
-    for (int dragibus=1;dragibus<=4;++dragibus){
-      list = nm->getTargets(nm,posAtk,dragibus,&nb);
-
-      if ((Impact.x - posAtk.x <2) && (Impact.y - posAtk.y <2)){
-        printf("A pas touché - trop proche\n");
-        return tab; // si impact trop proche on quitte
+      if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP && (Impact.x - posAtk.x < 4 && Impact.y - posAtk.y < 4)) { //En plein dessus
+        printf("Touché\n\n");
+        tab[nm->map [Impact.y][Impact.x] .id].COQ = tab[nm->map [Impact.y][Impact.x].id].COQ - 40;
       }
-
-      if (nm->map [Impact.y][Impact.x] .type == ENT_SHIP) {
-          int i = 0;
-          for (i=0;i<nb;++i) {
-          //Si il touche
-              if ((nm->shipPosition[list[i]].x == Impact.x) && (nm->shipPosition[list[i]].y == Impact.y)) {
-                  tab[list[i]].COQ = tab[list[i]].COQ - 40;
-              }
-              if (nm->shipPosition[list[i]].x == Impact.x + 1) {
-                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
-              }
-              if (nm->shipPosition[list[i]].y == Impact.y + 1) {
-                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
-              }
-              if (nm->shipPosition[list[i]].x == Impact.x - 1) {
-                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
-              }
-              if (nm->shipPosition[list[i]].y == Impact.y - 1) {
-                  tab[list[i]].COQ = tab[list[i]].COQ - 20;
-              }
-              ++i;
-          }
+      //EN dessous
+      else if (nm->map [Impact.y-1][Impact.x] .type == ENT_SHIP && (Impact.x - posAtk.x < 4 && Impact.y - posAtk.y < 4)) { //En plein dessus
+        printf("Touché\n\n");
+        tab[nm->map [Impact.y-1][Impact.x] .id].COQ = tab[nm->map [Impact.y-1][Impact.x].id].COQ - 40;
       }
-      /*
-      if (list==NULL){
-        printf("A pas touché - Liste nulle\n");
-        return tab;
-      }*/
-    }
+      //A gauche
+      else if (nm->map [Impact.y][Impact.x-1] .type == ENT_SHIP && (Impact.x - posAtk.x < 4 && Impact.y - posAtk.y < 4)) { //En plein dessus
+        printf("Touché\n\n");
+        tab[nm->map [Impact.y][Impact.x-1] .id].COQ = tab[nm->map [Impact.y][Impact.x-1].id].COQ - 40;
+      }
+      // Au dessus
+      else if (nm->map [Impact.y+1][Impact.x] .type == ENT_SHIP && (Impact.x - posAtk.x < 4 && Impact.y - posAtk.y < 4)) { //En plein dessus
+        printf("Touché\n\n");
+        tab[nm->map [Impact.y+1][Impact.x] .id].COQ = tab[nm->map [Impact.y+1][Impact.x].id].COQ - 40;
+      }
+      //A droite
+      else if (nm->map [Impact.y][Impact.x+1] .type == ENT_SHIP && (Impact.x - posAtk.x < 4 && Impact.y - posAtk.y < 4)) { //En plein dessus
+        printf("Touché\n\n");
+        tab[nm->map [Impact.y][Impact.x+1] .id].COQ = tab[nm->map [Impact.y][Impact.x+1].id].COQ - 40;
+      }
+      else{
+        printf("Raté\n\n");
+      }
 }
 
 void MOV(navalmap_t * nmap, int IDship, coord_t deplacement, SDL_Surface *ecran){
@@ -64,13 +51,17 @@ int SCN(navalmap_t *m, int shipID, SHIP * s){
   int* liste = malloc(sizeof(int)*m->nbShips);
   coord_t posSelf;
   posSelf=m->shipPosition[shipID];
+  int * nbship_det = malloc(sizeof(int));
 
-  int i=1, nb_ship=-666;
-  while (i<m->size.x && nb_ship == -666){
-    liste = m->getTargets(m, posSelf, i, &nb_ship);
-    ++i;
+  int i= m->size.x + m->size.y;
+   for (int j = 1; j<i; j++) {
+    liste = m->getTargets(m, posSelf, j, nbship_det);
+    if (*nbship_det != 0 && liste[0]!=shipID) {
+      j = i+1;
+    }
   }
-  printf("%d\n", liste[0]);
+  printf("Capitaine nous avons trouvé: %d navire(s) !\n", *nbship_det);
+  printf("==> %d <==\n", liste[0]);
   return liste[0];
 }
 
@@ -98,7 +89,7 @@ int conversion (char choix[3]){
 
 int decision(int nbTour, navalmap_t *m, int shipID, SHIP * s, int lastSCN, int IDCible){
   coord_t pos_ennemie; // Variable stockant la position d'un navire
-  printf("(%d)",shipID);
+  printf("(%d) en %d x %d y fait ",shipID, m->shipPosition[shipID].y,m->shipPosition[shipID].x);
   if (IDCible==-1 || nbTour == 0){//Verification que c'est le premier tour
     return conversion("SCN");
   }
@@ -146,12 +137,46 @@ VAR_JEU make_action (navalmap_t * nmap, SHIP * ships, int id, int act, int ID_d,
 
   switch (res.code_retour) {
     case 100: break;
-    case 101: /*ATK (res.nm, res.armada, res.ID, res.nm->shipPosition[ID_d]);*/break;
+    case 101: ATK (res.nm, res.armada, res.ID, res.nm->shipPosition[ID_d]);break;
     case 102: MOV (nmap, id, dep, ecran);break;
-    case 103: /*if (id==0){res.ID_Det =1;} else {res.ID_Det =0;}*/SCN(res.nm, res.ID, res.armada);break;
-
-
-    return res;
+    case 103: res.ID_Det = SCN(res.nm, res.ID, res.armada);break;
   }
   return res;
 }
+
+void samu(navalmap_t * m, SHIP * s, int id){
+  for(int i = 0; i<m->nbShips;++i){
+    if (s[i].KER < 0){
+      printf("(%d) est immobilisé. Fin du jeu.\n", id);
+      sleep(3);
+      exit(0);
+    }
+    if (s[i].COQ < 0){
+      printf("(%d) est mort. Fin du jeu.\n", id);
+      sleep(3);
+      exit(0);
+    }
+  }
+}
+
+/*void repare (navalmap_t * m, SHIP * ships,int shipID) {
+  if (ships[shipID].KER < 20) {
+    break;
+  }
+  else {
+    if (ships[shipID].COQ > 99) {
+      break;
+    }
+    else {
+      if((ships[shipID].KER > 74) && (ships[shipID].KER < 100)) {
+        ships[shipID].COQ = 100;
+        ships[shipID].KER = ships[shipID].KER - 20;
+      }
+      else {
+        ships[shipID].COQ = ships[shipID].COQ + 25;
+        ships[shipID].KER = ships[shipID].KER - 20;
+      }
+    }
+  }
+
+}*/
