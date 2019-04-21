@@ -7,7 +7,7 @@ compile:
 
 memcheck:
 	gcc -Wall -o main main.c `sdl-config --cflags --libs` -I./lib/include -L./libnm.a
-	sudo valgrind ./main
+	sudo valgrind --track-origins=yes ./main test.txt 
 
 debug:
 	gcc -ggdb -Wall -o main main.c `sdl-config --cflags --libs` -I./lib/include -L./libnm.a

@@ -57,7 +57,7 @@ placeRemainingShipsAtRandom(carte);
 
 nb_scan = malloc(sizeof(*nb_scan)*carte->nbShips);
 
-for (int kl = 0; kl < 2; kl++){
+for (int kl = 0; kl < carte->nbShips; kl++){
   nb_scan[kl]=malloc(sizeof(**nb_scan)*2);
 }
 
@@ -66,11 +66,12 @@ retour[0] = 0;
 
 for(nbTour=0;nbTour<temp.NbTours;++nbTour){
   printf("-------------- | Tour %d | --------------\n", nbTour);
+
+
   draw_flotte(carte, ecran, 0);
   SDL_Flip(ecran);
   for(int zimbabwe = 0; zimbabwe<carte->nbShips; ++zimbabwe){
     idB=zimbabwe;
-    samu(carte, armada, idB);
 // Initialisation des tubes
       int pipefd[2];  // fd du tube qui renvoie l'action dans le père
       if (pipe(pipefd)==-1){
@@ -86,9 +87,6 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
           return -1;
         }
 
-      // caster en void les variables pour l'etat
-      // et les stocker dans etat
-
       if (a!=0){
         //Processus père
         close(pipefd[1]); // on ferme le canal d'ecriture de pipefd
@@ -101,6 +99,7 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
       }
       else{
         // Processus fils
+        printf("\n-/--/--/--/--/--/-\n\n");
         close(pipefd[0]);
 
         retour[0] = decision(nbTour, carte, idB, armada, nb_scan[idB][0], nb_scan[idB][1]); // on met dans la 1re case de retour le code action
@@ -113,6 +112,7 @@ for(nbTour=0;nbTour<temp.NbTours;++nbTour){
         exit(-1);
       }
       sleep(2);
+      samu(carte, armada, idB);
     }
     draw_flotte(carte, ecran, 1);
 }
