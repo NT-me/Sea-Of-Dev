@@ -44,8 +44,8 @@ int draw_Case(int posX, int posY, int taille, int bordure, SDL_Surface *ecran){
 
 void draw_cadrillage(int posX, int posY, int largeur, int hauteur, int tailleC, int bordureC, SDL_Surface *ecran){
 	int i, j, posXC, posYC;
-	for(i=0;i<largeur; ++i){
-		for(j=0; j<hauteur; ++j){
+	for(i=0;i<hauteur; ++i){
+		for(j=0; j<largeur; ++j){
 			posXC=(tailleC*i)+posX;
 			posYC=(tailleC*j)+posY;
 			draw_Case(posXC, posYC, tailleC, bordureC, ecran);
