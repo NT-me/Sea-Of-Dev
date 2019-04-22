@@ -2,9 +2,9 @@
 
 ## Requirement
 - GCC
-- SDL
+- SDL (now include)
 - Linux (motherfucka)
 
 ## Usage
 
-```./main test.txt```
+```./SoD test.txt```
