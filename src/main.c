@@ -50,7 +50,7 @@ placeRemainingShipsAtRandom(carte);
     }
 
 
-    SDL_WM_SetCaption("Sea of dev - Théo Nardin, Emile Dadou", NULL);
+    SDL_WM_SetCaption("Sea of dev, NULL);
 //-----------------------
 
 //Processus de jeu
